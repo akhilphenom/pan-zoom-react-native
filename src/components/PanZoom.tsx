@@ -188,85 +188,26 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
             const extremeX = (containerDimensions.width-(contentDimensions.width));
             const extremeY = (containerDimensions.height- contentDimensions.height);
             const newPageY = pageY-statusBarHeight;
-            if((pageX<0&&(newPageY<=0||newPageY>=containerDimensions.height)) || 
-                (pageX>containerDimensions.width&&(newPageY<=0||newPageY>=containerDimensions.height))
+            if (
+                (pageX<0&&(newPageY<=0||newPageY>=containerCorners.bottomLeft.y)) || 
+                (pageX>containerDimensions.width&&(newPageY<=0||newPageY>=containerCorners.bottomLeft.y))
             ) {
-                return false;
-                // let minDistance = Number.MAX_SAFE_INTEGER;
-                // let chosenCornerSet = {
-                //     from: {...coordinates.topLeft},
-                //     to: {...containerCorners.topLeft},
-                //     fromName: 'topLeft',
-                //     toName: 'topLeft'
-                // }
-                // for(let coord in coordinates) {
-                //     for (let corner in containerCorners ) {
-                //         const dx = coordinates[coord].x - containerCorners[corner].x;
-                //         const dy = coordinates[coord].y - containerCorners[corner].y;
-                //         const distance = Math.sqrt(dx * dx + dy * dy);
-                //         if(distance<minDistance) {
-                //             minDistance = distance;
-                //             chosenCornerSet = {
-                //                 from: {...coordinates[coord]},
-                //                 to: {...containerCorners[corner]},
-                //                 fromName: coord,
-                //                 toName: corner
-                //             }
-                //         }
-                //     }
-                // }
-                // const newOffset = {
-                //     x: chosenCornerSet.to.x - chosenCornerSet.from.x,
-                //     y: chosenCornerSet.to.y - chosenCornerSet.from.y
-                // }
-                // withSpring(translateX,(newOffset.x/1)+lastOffsetX.__getValue())
-                // lastOffsetX.setValue(newOffset.x);
-                // withSpring(translateY,(newOffset.y/1)+lastOffsetY.__getValue())
-                // lastOffsetY.setValue(newOffset.y);
+                console.log('he')
+                isInsideBoundary = false
             } else if ((coordinates.bottomLeft.y<0&&(coordinates.topLeft.x>=0|| coordinates.topRight.x<=containerDimensions.width))) {
-                return true
-                // lastOffsetY.setValue(translateY.__getValue());
+                isInsideBoundary = false;
+                console.log('hes')
             } else if ((coordinates.topLeft.y>=containerDimensions.height && coordinates.topRight.x<=containerDimensions.width)) {
-                // withSpring(translateY,((containerDimensions.height-50)/1)+lastOffsetY.__getValue())
-                // lastOffsetY.setValue(containerDimensions.height-50);
-                return true
-            } else {
-                if(pageX >= 0 && pageX <= extremeX && pageY >= 0 && pageY <= extremeY) {
-                    // translateX.setValue(lastOffsetX.__getValue())
-                    // translateY.setValue(lastOffsetY.__getValue())
-                    return true;
-                }
+                isInsideBoundary = false
+                console.log('heaa')
+            } else if(pageX >= 0 && pageX <= extremeX && pageY >= 0 && pageY <= extremeY) {
+                isInsideBoundary = true;
+                console.log('hep')
             }
         });
+        console.log(isInsideBoundary)
+        return isInsideBoundary
     }
-
-    const handlePanOutside = useCallback(() => {
-        const { width, height } = getContentContainerSize();
-        const maxOffset = {
-            x: width * lastScale.__getValue() < containerDimensions.width ? 0 : ((width * lastScale.__getValue() - containerDimensions.width) / 2) / lastScale.__getValue(),
-            y: height * lastScale.__getValue() < containerDimensions.height ? 0 : ((height * lastScale.__getValue() - containerDimensions.height) / 2) / lastScale.__getValue(),
-        }
-        const isPanedXOutside = lastOffsetX.__getValue() > maxOffset.x || lastOffsetX.__getValue() < -maxOffset.x
-        console.log('here',lastOffsetX)
-        if (isPanedXOutside) {
-            const newOffsetX = lastOffsetX.__getValue() >= 0 ? maxOffset.x : -maxOffset.x
-            console.log(newOffsetX)
-            lastOffsetX.setValue(newOffsetX);
-            withSpring(translateX,newOffsetX)
-        } else {
-            translateX.setValue(lastOffsetX.__getValue())
-        }
-
-        const isPanedYOutside = lastOffsetY.__getValue() > maxOffset.y || lastOffsetY.__getValue() < -maxOffset.y
-        if (isPanedYOutside) {
-            const newOffsetY = lastOffsetY.__getValue() >= 0 ? maxOffset.y : -maxOffset.y
-            lastOffsetY.setValue(newOffsetY)
-
-            withSpring(translateY,newOffsetY)
-        } else {
-            translateY.setValue(lastOffsetY.__getValue())
-        }
-    }, [lastOffsetX, lastOffsetY, lastScale, translateX, translateY, containerDimensions, contentDimensions])
 
     const onDoubleTap = useCallback(() => {
         if (isZoomedIn) {
@@ -303,21 +244,96 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
         } else {
             zoomOut()
         }
-    }, [lastScale, baseScale, pinchScale, handlePanOutside, zoomOut, isZoomedIn])
+    }, [lastScale, baseScale, pinchScale, zoomOut, isZoomedIn])
 
     const panZoomGestures = useMemo(() => {
+        const ADDITIONAL_OFFSET = 50;
         const tapGesture = Gesture.Tap().numberOfTaps(2).onEnd(() => {
             onDoubleTap()
         })
-        const panGesture = Gesture.Pan().onUpdate(({ translationX, translationY }) => {
-            translateX.setValue (lastOffsetX.__getValue() + translationX / lastScale.__getValue());
-            translateY.setValue(lastOffsetY.__getValue() + translationY / lastScale.__getValue());
+        const panGesture = Gesture.Pan().onUpdate(({ translationX, translationY, velocityX, velocityY }) => {
+            if(!velocityX || !velocityY) {
+                return;
+            }
+            // let finalTranslates = {
+            //     x: lastOffsetX.__getValue() + translationX / lastScale.__getValue(),
+            //     y: lastOffsetY.__getValue() + translationY / lastScale.__getValue()
+            // }
+            translateX.setValue(lastOffsetX.__getValue() + translationX / lastScale.__getValue()),
+            translateY.setValue(lastOffsetY.__getValue() + translationY / lastScale.__getValue())
         }).onEnd(({ translationX, translationY }) => {
-            const allow = handleBoundaries();
-            console.log(allow)
-            if(allow) {
-                lastOffsetX.setValue(lastOffsetX.__getValue() + translationX / lastScale.__getValue())
-                lastOffsetY.setValue(lastOffsetY.__getValue() + translationY / lastScale.__getValue());
+            let finalTranslates = {
+                x: null,
+                y: null
+            }
+            finalTranslates.x = lastOffsetX.__getValue() + translationX / lastScale.__getValue()
+            finalTranslates.y = lastOffsetY.__getValue() + translationY / lastScale.__getValue();
+            let coordinates: {[key: string]: {
+                x: number, 
+                y: number
+            }} = {
+                topLeft: {x:0,y:0},
+                topRight: {x:0,y:0},
+                bottomLeft: {x:0,y:0},
+                bottomRight: {x:0,y:0},
+            }
+            animatedViewRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
+                const containerCorners: {[key: string]: {
+                    x: number, 
+                    y: number
+                }} = {
+                    topLeft: {
+                        x: 0,
+                        y: 0
+                    },
+                    topRight: {
+                        x: containerDimensions.width,
+                        y: 0,
+                    },
+                    bottomLeft: {
+                        x: 0,
+                        y: containerDimensions.height+statusBarHeight,
+                    },
+                    bottomRight: {
+                        x: containerDimensions.width,
+                        y: containerDimensions.height+statusBarHeight,
+                    },
+                }
+                coordinates = {
+                    topLeft: {x: pageX, y: pageY-statusBarHeight},
+                    topRight: {x: pageX+contentDimensions.width, y: pageY-statusBarHeight},
+                    bottomLeft: {x: pageX, y: pageY-statusBarHeight+contentDimensions.height},
+                    bottomRight: {x: pageX+contentDimensions.width, y: pageY-statusBarHeight+contentDimensions.height},
+                }
+                const newPageY = pageY-statusBarHeight;
+                console.log(translateY)
+                if(coordinates.bottomLeft.y<=containerCorners.topLeft.y) {
+                    if(coordinates.topRight.x>containerCorners.topLeft.x && coordinates.topLeft.x<containerCorners.topRight.x) {
+                        finalTranslates.x = lastOffsetX.__getValue() + translationX / lastScale.__getValue();
+                    }
+                    console.log(contentDimensions.height/lastScale.__getValue())
+                    finalTranslates.y = lastOffsetY.__getValue() - (translateY.__getValue()+(contentDimensions.height/lastScale.__getValue())-ADDITIONAL_OFFSET) / lastScale.__getValue();
+                }
+                if(coordinates.topLeft.y>=containerCorners.bottomLeft.y-statusBarHeight) {
+                    if(coordinates.topRight.x>containerCorners.topLeft.x && coordinates.topLeft.x<containerCorners.topRight.x) {
+                        finalTranslates.x = lastOffsetX.__getValue() + translationX / lastScale.__getValue();
+                    }
+                    finalTranslates.y = lastOffsetY.__getValue() - (translateY.__getValue()-containerDimensions.height+ADDITIONAL_OFFSET) / lastScale.__getValue();
+                }
+                if(finalTranslates.x) {
+                    translateX.setValue(finalTranslates.x);
+                }
+                if(finalTranslates.y) {
+                    translateY.setValue(finalTranslates.y);
+                }
+            });
+            // lastOffsetX.setValue(lastOffsetX.__getValue() + translationX / lastScale.__getValue())
+            // lastOffsetY.setValue(lastOffsetY.__getValue() + translationY / lastScale.__getValue());
+            if(translateX) {
+                lastOffsetX.setValue(translateX.__getValue())
+            }
+            if(translateY) {
+                lastOffsetY.setValue(translateY.__getValue());
             }
         }).minDistance(0).minPointers(1).maxPointers(2)
         const pinchGesture = Gesture.Pinch().onUpdate(({ scale }) => {

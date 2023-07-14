@@ -8,18 +8,12 @@ import { useRef } from 'react';
 export default function App() {
   const panZoomRef = useRef<any>(null);
   const contentRef = useRef(null);
-  const onGraphLayout = (e) => {
-    contentRef.current.measure((x, y, width: number, height: number) => {
-      console.log(width, height)
-      // setTimeout(()=> {panZoomRef?.current?.setInnerDimensions(width, height)}, 1000)
-    });
-  }
   return (
     <SafeAreaView style={styles.container}>
       <PanZoom 
       ref={panZoomRef}
       >
-        <View onLayout={onGraphLayout} ref={contentRef} style={{alignSelf: 'flex-start'}}>
+        <View ref={contentRef} style={{alignSelf: 'flex-start'}}>
             <TouchableOpacity style={{
               backgroundColor: 'yellow',
               width: 200,
