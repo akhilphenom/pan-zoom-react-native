@@ -110,71 +110,6 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
         setIsPanGestureEnabled(false)
     }, [baseScale, pinchScale, lastOffsetX, lastOffsetY, translateX, translateY, lastScale, isZoomedIn])
 
-    const handleBoundaries = () => {
-        if(!animatedViewRef.current) {
-            return false;
-        }
-        let isInsideBoundary = true;
-        let coordinates: {[key: string]: {
-            x: number, 
-            y: number
-        }} = {
-            topLeft: {x:0,y:0},
-            topRight: {x:0,y:0},
-            bottomLeft: {x:0,y:0},
-            bottomRight: {x:0,y:0},
-        }
-        animatedViewRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
-            const containerCorners: {[key: string]: {
-                x: number, 
-                y: number
-            }} = {
-                topLeft: {
-                    x: 0,
-                    y: 0
-                },
-                topRight: {
-                    x: containerDimensions.width,
-                    y: 0,
-                },
-                bottomLeft: {
-                    x: 0,
-                    y: containerDimensions.height+statusBarHeight,
-                },
-                bottomRight: {
-                    x: containerDimensions.width,
-                    y: containerDimensions.height+statusBarHeight,
-                },
-            }
-            coordinates = {
-                topLeft: {x: pageX, y: pageY-statusBarHeight},
-                topRight: {x: pageX+contentDimensions.width, y: pageY-statusBarHeight},
-                bottomLeft: {x: pageX, y: pageY-statusBarHeight+contentDimensions.height},
-                bottomRight: {x: pageX+contentDimensions.width, y: pageY-statusBarHeight+contentDimensions.height},
-            }
-            const extremeX = (containerDimensions.width-(contentDimensions.width));
-            const extremeY = (containerDimensions.height- contentDimensions.height);
-            const newPageY = pageY-statusBarHeight;
-            if (
-                (pageX<0&&(newPageY<=0||newPageY>=containerCorners.bottomLeft.y)) || 
-                (pageX>containerDimensions.width&&(newPageY<=0||newPageY>=containerCorners.bottomLeft.y))
-            ) {
-                console.log('he')
-                isInsideBoundary = false
-            } else if ((coordinates.bottomLeft.y<0&&(coordinates.topLeft.x>=0|| coordinates.topRight.x<=containerDimensions.width))) {
-                isInsideBoundary = false;
-                console.log('hes')
-            } else if ((coordinates.topLeft.y>=containerDimensions.height && coordinates.topRight.x<=containerDimensions.width)) {
-                isInsideBoundary = false
-                console.log('heaa')
-            } else if(pageX >= 0 && pageX <= extremeX && pageY >= 0 && pageY <= extremeY) {
-                isInsideBoundary = true;
-                console.log('hep')
-            }
-        });
-        return isInsideBoundary
-    }
-
     const onDoubleTap = useCallback(() => {
         if (isZoomedIn) {
             zoomOut()
@@ -195,7 +130,6 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
             width,
             height,
         }))
-        console.log(width, height)
     }, [])
 
     const onPinchEnd = useCallback((scale: number) => {
@@ -276,7 +210,7 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
                     if(coordinates.topRight.x>containerCorners.topLeft.x && coordinates.topLeft.x<containerCorners.topRight.x) {
                         finalTranslates.x = lastOffsetX.__getValue() + translationX / lastScale.__getValue();
                     }
-                    finalTranslates.y = lastOffsetY.__getValue() - (translateY.__getValue()-containerDimensions.height+ADDITIONAL_OFFSET) / lastScale.__getValue();
+                    finalTranslates.y = translateY.__getValue() - (translateY.__getValue()-(containerDimensions.height/lastScale.__getValue())+(ADDITIONAL_OFFSET/lastScale.__getValue()));
                 } else {
                     lastOffsetX.setValue(lastOffsetX.__getValue() + translationX / lastScale.__getValue())
                     lastOffsetY.setValue(lastOffsetY.__getValue() + translationY / lastScale.__getValue());
@@ -289,11 +223,11 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
                 }
                 if(translateX) {
                     balancerOffsetX.setValue(translateX.__getValue() - lastOffsetX.__getValue());
-                    lastOffsetX.setValue(translateX.__getValue() - balancerOffsetX.__getValue());
+                    lastOffsetX.setValue(translateX.__getValue() - (balancerOffsetX.__getValue()/lastScale.__getValue()));
                 }
                 if(translateY) {
                     balancerOffsetY.setValue(translateY.__getValue() - lastOffsetY.__getValue());
-                    lastOffsetY.setValue(translateY.__getValue() - balancerOffsetY.__getValue());
+                    lastOffsetY.setValue(translateY.__getValue() - (balancerOffsetY.__getValue()/lastScale.__getValue()));
                 }
             });
             // lastOffsetX.setValue(lastOffsetX.__getValue() + translationX / lastScale.__getValue())
@@ -307,7 +241,7 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
             onPinchEnd(scale);
         })
         return Gesture.Race(tapGesture, Gesture.Simultaneous(tapGesture,pinchGesture, panGesture))
-    }, [handleBoundaries, lastOffsetX, lastOffsetY, onDoubleTap, onPinchEnd, isPanGestureEnabled, pinchScale, translateX, translateY, lastScale])
+    }, [ lastOffsetX, lastOffsetY, onDoubleTap, onPinchEnd, isPanGestureEnabled, pinchScale, translateX, translateY, lastScale ])
   
     useImperativeHandle(ref, () => ({
         setPanning: (value: boolean) => {
