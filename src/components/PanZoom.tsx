@@ -1,5 +1,5 @@
 import {  StyleSheet, Text, View, Image, ViewStyle, Dimensions, StatusBar } from 'react-native'
-import React, { FunctionComponent, ReactElement, Ref, forwardRef, useCallback, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import React, { FunctionComponent, ReactElement, Ref, forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Animated } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView, PanGestureHandler, PinchGestureHandler, State } from 'react-native-gesture-handler';
 
@@ -15,7 +15,7 @@ interface PanZoomRef {
 
 const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
     const {style, contentContainerStyle, children} = props;
-    const animatedViewRef = useRef<View>(null);
+    const animatedViewRef = useRef<any>(null);
     const translateX = useRef(new Animated.Value(0)).current;
     const translateY = useRef(new Animated.Value(0)).current;
     const baseScale = useRef(new Animated.Value(1)).current
@@ -123,14 +123,14 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
             width,
             height,
         }))
-    }, [])
+    }, [isPanGestureEnabled])
 
     const onLayoutContent = useCallback(({ nativeEvent: { layout: { width, height } } }) => {
         setContentDimensions(state => ({
             width,
             height,
         }))
-    }, [])
+    }, [isPanGestureEnabled])
 
     const onPinchEnd = useCallback((scale: number) => {
         const newScale = lastScale.__getValue() * scale
@@ -150,7 +150,7 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
         const tapGesture = Gesture.Tap().numberOfTaps(4).onEnd(() => {
             onDoubleTap()
         })
-        const panGesture = Gesture.Pan().onUpdate(({ translationX, translationY, velocityX, velocityY }) => {
+        const panGesture = Gesture.Pan().enabled(isPanGestureEnabled).onUpdate(({ translationX, translationY, velocityX, velocityY }) => {
             if(!velocityX || !velocityY) {
                 return;
             }
@@ -200,16 +200,19 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
                     bottomLeft: {x: pageX, y: pageY-statusBarHeight+(contentDimensions.height/lastScale.__getValue())},
                     bottomRight: {x: pageX+(contentDimensions.width)/lastScale.__getValue(), y: pageY-statusBarHeight+(contentDimensions.height)/lastScale.__getValue()},
                 }
+                console.log(translateY)
                 if(coordinates.bottomLeft.y<=containerCorners.topLeft.y) {
                     if(coordinates.topRight.x>containerCorners.topLeft.x && coordinates.topLeft.x<containerCorners.topRight.x) {
                         finalTranslates.x = lastOffsetX.__getValue() + translationX / lastScale.__getValue();
                     }
-                    finalTranslates.y = translateY.__getValue() - (translateY.__getValue()+(containerDimensions.height/lastScale.__getValue())-(ADDITIONAL_OFFSET/lastScale.__getValue()));
+                    console.log('top', translateY.__getValue() - (translateY.__getValue()+(contentDimensions.height/lastScale.__getValue())-(ADDITIONAL_OFFSET/lastScale.__getValue())))
+                    finalTranslates.y = translateY.__getValue() - (translateY.__getValue()+(contentDimensions.height/lastScale.__getValue())-(ADDITIONAL_OFFSET/lastScale.__getValue()));
                 }
                 else if(coordinates.topLeft.y>=containerCorners.bottomLeft.y-statusBarHeight) {
                     if(coordinates.topRight.x>containerCorners.topLeft.x && coordinates.topLeft.x<containerCorners.topRight.x) {
                         finalTranslates.x = lastOffsetX.__getValue() + translationX / lastScale.__getValue();
                     }
+                    console.log('bottom', coordinates.topLeft.y, containerCorners.bottomLeft.y, containerDimensions)
                     finalTranslates.y = translateY.__getValue() - (translateY.__getValue()-(containerDimensions.height/lastScale.__getValue())+(ADDITIONAL_OFFSET/lastScale.__getValue()));
                 } else {
                     lastOffsetX.setValue(lastOffsetX.__getValue() + translationX / lastScale.__getValue())
@@ -226,7 +229,10 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
                     lastOffsetX.setValue(translateX.__getValue() - (balancerOffsetX.__getValue()/lastScale.__getValue()));
                 }
                 if(translateY) {
-                    balancerOffsetY.setValue(translateY.__getValue() - lastOffsetY.__getValue());
+                    balancerOffsetY.setValue(0);
+                    if(translateY.__getValue()>lastOffsetY.__getValue()) {
+                        balancerOffsetY.setValue(translateY.__getValue() - lastOffsetY.__getValue());
+                    }
                     lastOffsetY.setValue(translateY.__getValue() - (balancerOffsetY.__getValue()/lastScale.__getValue()));
                 }
             });
@@ -243,9 +249,18 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
         return Gesture.Race(tapGesture, Gesture.Simultaneous(tapGesture,pinchGesture, panGesture))
     }, [ lastOffsetX, lastOffsetY, onDoubleTap, onPinchEnd, isPanGestureEnabled, pinchScale, translateX, translateY, lastScale ])
   
+    useEffect(() => {
+        if(animatedViewRef.current) {
+            animatedViewRef.current.measure((x, y, width, height) => {
+              console.log('Updated width:', width);
+              console.log('Updated height:', height);
+            });
+        }
+    }, [animatedViewRef.current?.children]);
+
     useImperativeHandle(ref, () => ({
         setPanning: (value: boolean) => {
-            setIsPanGestureEnabled(value);
+            setIsPanGestureEnabled(state => value);
         },
     }));
 

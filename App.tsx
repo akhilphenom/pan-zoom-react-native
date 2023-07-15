@@ -3,16 +3,18 @@ import {PanZoom} from './src/components/PanZoom';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function App() {
   const panZoomRef = useRef<any>(null);
   const contentRef = useRef(null);
-  const panning = useRef(false);
+  const [panning, setPanning] = useState(true);
   const handlePanning = () => {
-    panning.current = !panning.current;
-    panZoomRef.current.setPanning(panning.current)
+    setPanning(panning => !panning)
   }
+  useEffect(()=>{
+    panZoomRef.current.setPanning(panning)
+  }, [panning])
   return (
     <SafeAreaView style={styles.container}>
       <PanZoom 
@@ -21,12 +23,12 @@ export default function App() {
         <View ref={contentRef} style={{alignSelf: 'flex-start'}}>
             <TouchableOpacity style={{
               backgroundColor: 'yellow',
-              width: 900,
-              height :900,
+              width: 200,
+              height :800,
               borderWidth: 5,
               borderColor: 'red'
             }}
-            disabled={panning.current}
+            disabled={panning}
             onPress={()=>console.log('hheheeh')}
             >
               <Text style={{fontSize: 42}}>
