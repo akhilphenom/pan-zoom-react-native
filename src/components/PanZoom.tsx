@@ -68,8 +68,8 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
     const handleBoundaries = (translationX: number, translationY: number) => {
         const ADDITIONAL_OFFSET = 50;
         let finalTranslates = {
-            x: null,
-            y: null
+            x: 0,
+            y: 0
         }
         finalTranslates.x = lastOffsetX.__getValue() + translationX / lastScale.__getValue()
         finalTranslates.y = lastOffsetY.__getValue() + translationY / lastScale.__getValue();
@@ -82,7 +82,7 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
             bottomLeft: {x:0,y:0},
             bottomRight: {x:0,y:0},
         }
-        animatedViewRef.current?.measure((x, y, width, height, pageX, pageY) => {
+        animatedViewRef.current?.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
             const containerCorners: {[key: string]: {
                 x: number, 
                 y: number
@@ -113,7 +113,6 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
             console.log(translateY)
             if(coordinates.bottomLeft.y<=containerCorners.topLeft.y) {
                 if(coordinates.topRight.x>containerCorners.topLeft.x && coordinates.topLeft.x<containerCorners.topRight.x) {
-                    console.log('misc',coordinates.topLeft.x, containerCorners.topRight.x)
                     finalTranslates.x = lastOffsetX.__getValue() + translationX / lastScale.__getValue();
                 }
                 finalTranslates.y = translateY.__getValue() - (translateY.__getValue()+(contentDimensions.height/lastScale.__getValue())-(ADDITIONAL_OFFSET/lastScale.__getValue()));
@@ -122,7 +121,6 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
                 if(coordinates.topRight.x>containerCorners.topLeft.x && coordinates.topLeft.x<containerCorners.topRight.x) {
                     finalTranslates.x = lastOffsetX.__getValue() + translationX / lastScale.__getValue();
                 }
-                console.log('bottom', coordinates.topLeft.y, containerCorners.bottomLeft.y, containerDimensions)
                 finalTranslates.y = translateY.__getValue() - (translateY.__getValue()-(containerDimensions.height/lastScale.__getValue())+(ADDITIONAL_OFFSET/lastScale.__getValue()));
             } else {
                 lastOffsetX.setValue(lastOffsetX.__getValue() + translationX / lastScale.__getValue())
@@ -159,7 +157,6 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
             lastScale.setValue(newScale)
             withSpring(baseScale,newScale)
             withSpring(pinchScale,1)
-            console.log('page',pageX, lastOffsetX)
             const newOffsetX = (lastOffsetX.__getValue()+pageX)/lastScale.__getValue();
             const newOffsetY = (lastOffsetY.__getValue()+pageY-statusBarHeight)/lastScale.__getValue();
             lastOffsetX.setValue(newOffsetX);
@@ -172,25 +169,25 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
     const zoomOut = useCallback(() => {
         setIsZoomedIn(false)
         setIsPanGestureEnabled(true)
-        animatedViewRef.current?.measure((x:number, y: number, width: number, height: number, pageX:number, pageY: number) => {
-            let newScale = 1;
-            lastScale.setValue(newScale)
-            withSpring(baseScale,newScale)
-            withSpring(pinchScale,1)
-            const newOffsetX = (lastOffsetX.__getValue()+pageX);
-            const newOffsetY = (lastOffsetY.__getValue()+pageY-statusBarHeight);
-            lastOffsetX.setValue(newOffsetX);
-            lastOffsetY.setValue(newOffsetY);
-            withSpring(translateX,newOffsetX)
-            withSpring(translateY,newOffsetY)
-        });
+        // animatedViewRef.current?.measure((x:number, y: number, width: number, height: number, pageX:number, pageY: number) => {
+        //     let newScale = 1;
+        //     lastScale.setValue(newScale)
+        //     withSpring(baseScale,newScale)
+        //     withSpring(pinchScale,1)
+        //     const newOffsetX = (lastOffsetX.__getValue()+pageX);
+        //     const newOffsetY = (lastOffsetY.__getValue()+pageY-statusBarHeight);
+        //     lastOffsetX.setValue(newOffsetX);
+        //     lastOffsetY.setValue(newOffsetY);
+        //     withSpring(translateX,newOffsetX)
+        //     withSpring(translateY,newOffsetY)
+        // });
     }, [handleBoundaries,baseScale, pinchScale, lastOffsetX, lastOffsetY, translateX, translateY, lastScale, isZoomedIn])
 
     const onDoubleTap = useCallback((absoluteX:number, absoluteY:number) => {
-        if (isZoomedIn) {
-            zoomOut()
-        } else {
+        if (!isZoomedIn) {
             zoomIn(absoluteX, absoluteY)
+        } else {
+            zoomOut()
         }
     }, [zoomIn, zoomOut, isZoomedIn])
 
@@ -211,14 +208,8 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
     const onPinchEnd = useCallback((scale: number, x: number, y: number) => {
         const newScale = baseScale.__getValue() * scale
         lastScale.setValue(newScale)
-        console.log('focii', x, y)
         focalX.setValue(x)
         focalY.setValue(y)
-        // lastOffsetX.setValue(newTranslateX);
-        // lastOffsetY.setValue(newTranslateY);
-        // translateX.setValue(newTranslateX);
-        // translateY.setValue(newTranslateY);
-        
         if (newScale > 1) {
             setIsZoomedIn(true)
             baseScale.setValue(newScale)
@@ -240,9 +231,7 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
             translateX.setValue(lastOffsetX.__getValue() + translationX / lastScale.__getValue()),
             translateY.setValue(lastOffsetY.__getValue() + translationY / lastScale.__getValue())
         }).onEnd(({ translationX, translationY }) => {
-            handleBoundaries(translationX, translationY)
-            // lastOffsetX.setValue(lastOffsetX.__getValue() + translationX / lastScale.__getValue())
-            // lastOffsetY.setValue(lastOffsetY.__getValue() + translationY / lastScale.__getValue());
+            handleBoundaries(translationX, translationY);
         }).minDistance(0).minPointers(1).maxPointers(2)
         const pinchGesture = Gesture.Pinch().onUpdate(({ scale }) => {
             pinchScale.setValue(scale)
