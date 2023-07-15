@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 export default function App() {
   const panZoomRef = useRef<any>(null);
   const contentRef = useRef(null);
-  const [panning, setPanning] = useState(true);
+  const [panning, setPanning] = useState(false);
   const handlePanning = () => {
     setPanning(panning => !panning)
   }

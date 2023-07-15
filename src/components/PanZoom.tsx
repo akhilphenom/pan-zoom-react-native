@@ -16,6 +16,7 @@ interface PanZoomRef {
 const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
     const {style, contentContainerStyle, children} = props;
     const animatedViewRef = useRef<any>(null);
+    const rootViewRef = useRef<any>(null);
     const translateX = useRef(new Animated.Value(0)).current;
     const translateY = useRef(new Animated.Value(0)).current;
     const baseScale = useRef(new Animated.Value(1)).current
@@ -30,6 +31,7 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
     const balancerOffsetX = useRef(new Animated.Value(0)).current
     const balancerOffsetY = useRef(new Animated.Value(0)).current
     const [statusBarHeight, setStatusBarHeight] = useState(0);
+    const [childrenCount, setChildrenCount] = useState(0);
 
     useLayoutEffect(() => {
         const getStatusBarHeight = () => {
@@ -248,15 +250,11 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
         })
         return Gesture.Race(tapGesture, Gesture.Simultaneous(tapGesture,pinchGesture, panGesture))
     }, [ lastOffsetX, lastOffsetY, onDoubleTap, onPinchEnd, isPanGestureEnabled, pinchScale, translateX, translateY, lastScale ])
-  
+
     useEffect(() => {
-        if(animatedViewRef.current) {
-            animatedViewRef.current.measure((x, y, width, height) => {
-              console.log('Updated width:', width);
-              console.log('Updated height:', height);
-            });
-        }
-    }, [animatedViewRef.current?.children]);
+        const count = React.Children.count(children);
+        setChildrenCount(count);
+    }, [children]);
 
     useImperativeHandle(ref, () => ({
         setPanning: (value: boolean) => {
@@ -269,6 +267,7 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
             <GestureDetector gesture={panZoomGestures}>
                 <View
                 style={[styles.container, style]}
+                ref={rootViewRef}
                 onLayout={onLayout}
                 collapsable={false}
                 >
