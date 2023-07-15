@@ -9,8 +9,12 @@ export default function App() {
   const panZoomRef = useRef<any>(null);
   const contentRef = useRef(null);
   const [panning, setPanning] = useState(false);
+
   const handlePanning = () => {
     setPanning(panning => !panning)
+  }
+  const handleTouchableOpacityPress = () => {
+    console.log('Pressed')
   }
   useEffect(()=>{
     panZoomRef.current.setPanning(panning)
@@ -25,11 +29,11 @@ export default function App() {
               backgroundColor: 'yellow',
               width: 200,
               height :800,
-              borderWidth: 5,
-              borderColor: 'red'
             }}
             disabled={panning}
-            onPress={()=>console.log('hheheeh')}
+            onLongPress={handleTouchableOpacityPress}
+            
+            delayLongPress={50}
             >
               <Text style={{fontSize: 42}}>
                 Lorem ipsum dolor sit amet consectetur, adipisicing elit. Voluptatibus, laboriosam voluptates porro facilis ratione maiores, sit aspernatur nemo illo temporibus sed beatae a architecto hic necessitatibus velit voluptas ipsum laudantium.

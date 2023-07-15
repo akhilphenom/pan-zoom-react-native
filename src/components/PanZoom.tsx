@@ -62,6 +62,7 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
     }
 
     const withSpring = ( anim: Animated.Value, toValue: number) => {
+        if(!toValue) return;
         Animated.spring(anim, {
             toValue,
             useNativeDriver: true
@@ -149,8 +150,8 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
 
     const panZoomGestures = useMemo(() => {
         const ADDITIONAL_OFFSET = 50;
-        const tapGesture = Gesture.Tap().numberOfTaps(4).onEnd(() => {
-            onDoubleTap()
+        const tapGesture = Gesture.Tap().enabled(isPanGestureEnabled).numberOfTaps(4).onEnd(() => {
+            // onDoubleTap()
         })
         const panGesture = Gesture.Pan().enabled(isPanGestureEnabled).onUpdate(({ translationX, translationY, velocityX, velocityY }) => {
             if(!velocityX || !velocityY) {
