@@ -82,71 +82,69 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
             bottomLeft: {x:0,y:0},
             bottomRight: {x:0,y:0},
         }
-        animatedViewRef.current?.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
-            const containerCorners: {[key: string]: {
-                x: number, 
-                y: number
-            }} = {
+        const containerCorners: {[key: string]: {
+            x: number, 
+            y: number
+        }} = {
+            topLeft: {
+                x: 0,
+                y: 0
+            },
+            topRight: {
+                x: containerDimensions.width,
+                y: 0,
+            },
+            bottomLeft: {
+                x: 0,
+                y: (containerDimensions.height)+statusBarHeight,
+            },
+            bottomRight: {
+                x: containerDimensions.width,
+                y: (containerDimensions.height)+statusBarHeight,
+            },
+        }
+        animatedViewRef.current.measureInWindow((x: number,y: number,width: number, height: number)=>{
+            const transformedLeft = x * lastScale.__getValue();
+            const transformedTop = y * lastScale.__getValue();
+            const transformedWidth = width * lastScale.__getValue();
+            const transformedHeight = height * lastScale.__getValue();
+            coordinates = {
                 topLeft: {
-                    x: 0,
-                    y: 0
+                    x: transformedLeft, y: transformedTop
                 },
                 topRight: {
-                    x: containerDimensions.width/lastScale.__getValue(),
-                    y: 0,
+                    x: transformedLeft+transformedWidth, y: transformedTop
                 },
                 bottomLeft: {
-                    x: 0,
-                    y: (containerDimensions.height)/lastScale.__getValue()+statusBarHeight,
+                    x: transformedTop, y: transformedTop+transformedHeight
                 },
                 bottomRight: {
-                    x: containerDimensions.width/lastScale.__getValue(),
-                    y: (containerDimensions.height)/lastScale.__getValue()+statusBarHeight,
+                    x: transformedTop+transformedWidth, y: transformedTop+transformedHeight
                 },
             }
-            coordinates = {
-                topLeft: {x: pageX/lastScale.__getValue(), y: (pageY-statusBarHeight)/lastScale.__getValue()},
-                topRight: {x: pageX/lastScale.__getValue()+contentDimensions.width/lastScale.__getValue(), y: (pageY-statusBarHeight)/lastScale.__getValue()},
-                bottomLeft: {x: pageX/lastScale.__getValue(), y: (pageY-statusBarHeight)/lastScale.__getValue()+(contentDimensions.height/lastScale.__getValue())},
-                bottomRight: {x: pageX/lastScale.__getValue()+(contentDimensions.width)/lastScale.__getValue(), y: (pageY-statusBarHeight)/lastScale.__getValue()+(contentDimensions.height)/lastScale.__getValue()},
+            const scaledHeight = contentDimensions.height*lastScale.__getValue();
+            const scaledWidth = contentDimensions.width*lastScale.__getValue();
+            if(x+scaledWidth<containerCorners.topLeft.x) {
+                finalTranslates.x = translateX.__getValue()-((x+scaledWidth)/lastScale.__getValue())+ADDITIONAL_OFFSET/lastScale.__getValue();
             }
-            console.log(translateY)
-            if(coordinates.bottomLeft.y<=containerCorners.topLeft.y) {
-                if(coordinates.topRight.x>containerCorners.topLeft.x && coordinates.topLeft.x<containerCorners.topRight.x) {
-                    finalTranslates.x = lastOffsetX.__getValue() + translationX / lastScale.__getValue();
-                }
-                finalTranslates.y = translateY.__getValue() - (translateY.__getValue()+(contentDimensions.height/lastScale.__getValue())-(ADDITIONAL_OFFSET/lastScale.__getValue()));
+            if(y+scaledHeight<containerCorners.topLeft.y) {
+                finalTranslates.y =  translateY.__getValue()-((y+scaledHeight)/lastScale.__getValue())+ADDITIONAL_OFFSET/lastScale.__getValue();
             }
-            else if(coordinates.topLeft.y>=containerCorners.bottomLeft.y-statusBarHeight) {
-                if(coordinates.topRight.x>containerCorners.topLeft.x && coordinates.topLeft.x<containerCorners.topRight.x) {
-                    finalTranslates.x = lastOffsetX.__getValue() + translationX / lastScale.__getValue();
-                }
-                finalTranslates.y = translateY.__getValue() - (translateY.__getValue()-(containerDimensions.height/lastScale.__getValue())+(ADDITIONAL_OFFSET/lastScale.__getValue()));
-            } else {
-                lastOffsetX.setValue(lastOffsetX.__getValue() + translationX / lastScale.__getValue())
-                lastOffsetY.setValue(lastOffsetY.__getValue() + translationY / lastScale.__getValue());
+            if(x>containerCorners.topRight.x) {
+                finalTranslates.x = translateX.__getValue()-(x-containerCorners.topRight.x)/lastScale.__getValue()-ADDITIONAL_OFFSET/lastScale.__getValue();
+            }
+            if(y>containerCorners.bottomRight.y) {
+                finalTranslates.y = translateY.__getValue()-(y-containerCorners.bottomRight.y)/lastScale.__getValue()-(ADDITIONAL_OFFSET+statusBarHeight)/lastScale.__getValue();
             }
             if(finalTranslates.x) {
                 translateX.setValue(finalTranslates.x);
+                lastOffsetX.setValue(translateX.__getValue());
             }
             if(finalTranslates.y) {
                 translateY.setValue(finalTranslates.y);
+                lastOffsetY.setValue(translateY.__getValue());
             }
-            if(translateX) {
-                balancerOffsetY.setValue(0);
-                if(translateY.__getValue()>lastOffsetY.__getValue()) {
-                    balancerOffsetX.setValue(translateX.__getValue() - lastOffsetX.__getValue());
-                }
-                lastOffsetX.setValue(translateX.__getValue() - (balancerOffsetX.__getValue()/lastScale.__getValue()));
-            }
-            if(translateY) {
-                balancerOffsetY.setValue(0);
-                if(translateY.__getValue()>lastOffsetY.__getValue()) {
-                    balancerOffsetY.setValue(translateY.__getValue() - lastOffsetY.__getValue());
-                }
-                lastOffsetY.setValue(translateY.__getValue() - (balancerOffsetY.__getValue()/lastScale.__getValue()));
-            }
-        });
+        })
     }
 
     const zoomIn = useCallback((absoluteX: number, absoluteY: number) => {
@@ -169,19 +167,7 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
     const zoomOut = useCallback(() => {
         setIsZoomedIn(false)
         setIsPanGestureEnabled(true)
-        // animatedViewRef.current?.measure((x:number, y: number, width: number, height: number, pageX:number, pageY: number) => {
-        //     let newScale = 1;
-        //     lastScale.setValue(newScale)
-        //     withSpring(baseScale,newScale)
-        //     withSpring(pinchScale,1)
-        //     const newOffsetX = (lastOffsetX.__getValue()+pageX);
-        //     const newOffsetY = (lastOffsetY.__getValue()+pageY-statusBarHeight);
-        //     lastOffsetX.setValue(newOffsetX);
-        //     lastOffsetY.setValue(newOffsetY);
-        //     withSpring(translateX,newOffsetX)
-        //     withSpring(translateY,newOffsetY)
-        // });
-    }, [handleBoundaries,baseScale, pinchScale, lastOffsetX, lastOffsetY, translateX, translateY, lastScale, isZoomedIn])
+    }, [animatedViewRef,handleBoundaries,baseScale, pinchScale, lastOffsetX, lastOffsetY, translateX, translateY, lastScale, isZoomedIn])
 
     const onDoubleTap = useCallback((absoluteX:number, absoluteY:number) => {
         if (!isZoomedIn) {

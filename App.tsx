@@ -67,15 +67,15 @@ export default function App() {
         ref={contentRef}
         onLayout={calculateParentDimensions}>
           {
-            [].constructor(20).fill(1).map((item,index: number) => {
+            [].constructor(10).fill(1).map((_,index: number) => {
               return (
                 <TouchableOpacity style={{
                   backgroundColor: 'yellow',
-                  width: 25,
-                  height: 25,
+                  width: 50,
+                  height: 50,
                   position: 'absolute',
-                  top: index*25,
-                  left: index*25
+                  top: index*50,
+                  left: index*50
                 }}
                 onLayout={event => handleChildLayout(index, event)}
                 key={index}
