@@ -1,11 +1,9 @@
 import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
-import {PanZoom} from './src/components/PanZoom';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import PanZoomView from './src/components/PanZoomView';
-import ZoomView from './src/components/PanZoom2';
+import { PanZoomReanimated } from './src/components/PanZoomView';
 
 export default function App() {
   const PADDING = 20;
@@ -53,13 +51,13 @@ export default function App() {
   const handleTouchableOpacityPress = () => {
     console.log('Pressed')
   }
-  
+
   useEffect(()=>{
     panZoomRef.current?.setPanning(panning)
   }, [panning])
   return (
     <SafeAreaView style={styles.container}>
-      <PanZoom 
+      <PanZoomReanimated 
       ref={panZoomRef}
       >
         <View style={{
@@ -91,39 +89,7 @@ export default function App() {
             })
           }
         </View>
-      </PanZoom>
-      {/* <PanZoomView></PanZoomView> */}
-      {/* <ZoomView>
-        <View style={{
-          width: parentWidth,
-          height: parentHeight,
-          borderWidth: 1,
-        }}
-        ref={contentRef}
-        onLayout={calculateParentDimensions}>
-          {
-            [].constructor(10).fill(1).map((_,index: number) => {
-              return (
-                <TouchableOpacity style={{
-                  backgroundColor: 'yellow',
-                  width: 50,
-                  height: 50,
-                  position: 'absolute',
-                  top: index*50,
-                  left: index*50
-                }}
-                onLayout={event => handleChildLayout(index, event)}
-                key={index}
-                disabled={panning}
-                onPress={handleTouchableOpacityPress}
-                >
-                  <Text>{index}</Text>
-                </TouchableOpacity>
-              )
-            })
-          }
-        </View>
-      </ZoomView> */}
+      </PanZoomReanimated>
       <TouchableOpacity style={styles.floatingBtn} onPress={handlePanning}>
         <MaterialIcons style={styles.palmIcon} name="pan-tool" size={24} color="white" />
       </TouchableOpacity>
