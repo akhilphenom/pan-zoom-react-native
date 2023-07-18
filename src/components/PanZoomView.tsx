@@ -113,7 +113,6 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
         animatedViewRef.current?.measureInWindow((x: number,y: number,width: number, height: number)=>{
             const scaledHeight = contentDimensions.height*lastScale.value;
             const scaledWidth = contentDimensions.width*lastScale.value;
-            finalTranslates.x = Math.max(translateX.value, translateX.value-((x+scaledWidth)/lastScale.value)+ADDITIONAL_OFFSET/lastScale.value);
             if(x+scaledWidth<containerCorners.topLeft.x) {
                 finalTranslates.x = translateX.value-((x+scaledWidth)/lastScale.value)+ADDITIONAL_OFFSET/lastScale.value;
             }
