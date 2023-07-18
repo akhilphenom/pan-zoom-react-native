@@ -165,21 +165,18 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
     const onPinchEnd = useCallback((scale: number, x: number, y: number) => {
         const newScale = baseScale.__getValue() * scale
         lastScale.setValue(newScale)
-        if (newScale > 1) {
-            setIsZoomedIn(true)
-            baseScale.setValue(newScale)
-            pinchScale.setValue(1)
-            setIsPanGestureEnabled(true);
-        } else {
-            zoomOut()
-        }
-    }, [handleBoundaries, lastScale, baseScale, pinchScale, zoomOut, isZoomedIn])
+        setIsZoomedIn(true)
+        baseScale.setValue(newScale)
+        pinchScale.setValue(1)
+        setIsPanGestureEnabled(true);
+        setIsPanGestureEnabled(true);
+    }, [handleBoundaries, lastScale, baseScale, pinchScale, zoomOut, isZoomedIn, focalX, focalY, isPanGestureEnabled])
 
     const panZoomGestures = useMemo(() => {
         const tapGesture = Gesture.Tap().enabled(isPanGestureEnabled).numberOfTaps(3).onEnd(({absoluteX, absoluteY}) => {
             onDoubleTap(absoluteX, absoluteY)
         })
-        const panGesture = Gesture.Pan().enabled(isPanGestureEnabled).onStart(()=>{}).onUpdate(({ translationX, translationY, velocityX, velocityY }) => {
+        const panGesture = Gesture.Pan().enabled(isPanGestureEnabled).onUpdate(({ translationX, translationY, velocityX, velocityY }) => {
             if(!velocityX || !velocityY) {
                 return;
             }
@@ -188,17 +185,22 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
         }).onEnd(({ translationX, translationY }) => {
             handleBoundaries(translationX, translationY);
         }).minDistance(0).minPointers(1).maxPointers(2)
-        const pinchGesture = Gesture.Pinch().onUpdate(({ scale, focalX:x, focalY:y }) => {
+        const pinchGesture = Gesture.Pinch().onUpdate((e) => {
+            const {focalX:prevFocalX, focalY:prevFocalY, velocity, scale} = e;
+            if(!velocity) {
+                return;
+            }
             pinchScale.setValue(scale)
-            focalX.setValue(x)
-            focalY.setValue(y)
-            setIsPanGestureEnabled(true);
+            const translateXValue = prevFocalX - focalX.__getValue() * scale;
+            const translateYValue = prevFocalY - focalY.__getValue() * scale;
+            translateX.setValue(translateXValue);
+            translateY.setValue(translateYValue);
         }).onEnd(({ scale, focalX, focalY }) => {
             pinchScale.setValue(scale)
             onPinchEnd(scale, focalX, focalY);
         })
-        return Gesture.Race(tapGesture, Gesture.Simultaneous(tapGesture,pinchGesture, panGesture))
-    }, [ handleBoundaries ,lastOffsetX, lastOffsetY, onDoubleTap, onPinchEnd, isPanGestureEnabled, pinchScale, translateX, translateY, lastScale ])
+        return Gesture.Simultaneous(pinchGesture, panGesture )
+    }, [ handleBoundaries ,lastOffsetX, lastOffsetY, onDoubleTap, onPinchEnd, isPanGestureEnabled, pinchScale, translateX, translateY, lastScale, focalX, focalY ])
 
     useEffect(() => {
         const count = React.Children.count(children);
