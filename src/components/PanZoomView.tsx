@@ -34,13 +34,23 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
     const [statusBarHeight, setStatusBarHeight] = useState(0);
     const [childrenCount, setChildrenCount] = useState(0);
 
-    const rStyle = useAnimatedStyle(() => ({
-      transform: [
-        { scale: baseScale.value*pinchScale.value },
-        { translateX: translateX.value },
-        { translateY: translateY.value },
-      ], 
-    }))
+    const rStyle = useAnimatedStyle(() => {
+      return {
+        transform: [
+          { scale: baseScale.value*pinchScale.value },
+          { translateX: translateX.value },
+          { translateY: translateY.value  },
+        ]}
+    })
+
+    const debug = useAnimatedStyle(()=>{
+      return {
+        transform: [
+          { translateX: focalX.value },
+          { translateY: focalY.value  },
+        ]
+      }
+    });
 
     useLayoutEffect(() => {
         const getStatusBarHeight = () => {
@@ -62,14 +72,6 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
             Dimensions.addEventListener('change', updateStatusBarHeight);
         };
     }, []);
-
-    const withSpring = ( anim: Animated.Value, toValue: number) => {
-        if(!toValue) return;
-        Animated.spring(anim, {
-            toValue,
-            useNativeDriver: true
-        }).start();
-    }
 
     const handleBoundaries = (translationX: number, translationY: number) => {
         const ADDITIONAL_OFFSET = 50;
@@ -135,7 +137,7 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
             baseScale.value = newScale
             pinchScale.value = 1
             const newOffsetX = (lastOffsetX.value+pageX)/lastScale.value;
-            const newOffsetY = (lastOffsetY.value+pageY-statusBarHeight)/lastScale.value;
+            const newOffsetY = (lastOffsetY.value+pageY)/lastScale.value;
             lastOffsetX.value = (newOffsetX);
             lastOffsetY.value = (newOffsetY);
             translateX.value = newOffsetX
@@ -181,7 +183,7 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
     }, [handleBoundaries, lastScale, baseScale, pinchScale, zoomOut, isZoomedIn, focalX, focalY, isPanGestureEnabled])
 
     const panZoomGestures = useMemo(() => {
-        const tapGesture = Gesture.Tap().enabled(isPanGestureEnabled).numberOfTaps(3).onEnd(({absoluteX, absoluteY}) => {
+        const tapGesture = Gesture.Tap().numberOfTaps(2).onEnd(({absoluteX, absoluteY}) => {
             onDoubleTap(absoluteX, absoluteY)
         })
         const panGesture = Gesture.Pan().enabled(isPanGestureEnabled).onUpdate(({ translationX, translationY, velocityX, velocityY }) => {
@@ -196,8 +198,8 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
                 return;
             }
             pinchScale.value = (scale)
-            const translateXValue = previousFocalX - focalX.value * scale;
-            const translateYValue = previousFocalY - focalY.value * scale;
+            const translateXValue = previousFocalX - focalX.value * lastScale.value;
+            const translateYValue = previousFocalY - focalY.value * lastScale.value;
             translateX.value = (translateXValue);
             translateY.value = (translateYValue);
         }).onEnd(({ scale, focalX, focalY }) => {
@@ -236,6 +238,9 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
                     >
                         {children}
                     </Animated.View>
+                    <Animated.View style={[styles.debug, debug]}>
+
+                    </Animated.View>
                 </View>
             </GestureDetector>
         </GestureHandlerRootView>   
@@ -252,6 +257,7 @@ const styles = StyleSheet.create({
         borderRadius: 5,
         width: 10,
         height: 10,
-        backgroundColor: 'cyan'
+        backgroundColor: 'cyan',
+        position:'absolute'
     }
 })
