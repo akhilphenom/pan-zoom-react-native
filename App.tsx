@@ -1,9 +1,9 @@
 import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
-import {PanZoom} from './src/components/PanZoom';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { PanZoomReanimated } from './src/components/PanZoomView';
 
 export default function App() {
   const PADDING = 20;
@@ -51,12 +51,13 @@ export default function App() {
   const handleTouchableOpacityPress = () => {
     console.log('Pressed')
   }
+
   useEffect(()=>{
-    panZoomRef.current.setPanning(panning)
+    panZoomRef.current?.setPanning(panning)
   }, [panning])
   return (
     <SafeAreaView style={styles.container}>
-      <PanZoom 
+      <PanZoomReanimated 
       ref={panZoomRef}
       >
         <View style={{
@@ -67,7 +68,7 @@ export default function App() {
         ref={contentRef}
         onLayout={calculateParentDimensions}>
           {
-            [].constructor(2).fill(1).map((_,index: number) => {
+            [].constructor(20).fill(1).map((_,index: number) => {
               return (
                 <TouchableOpacity style={{
                   backgroundColor: 'yellow',
@@ -82,13 +83,13 @@ export default function App() {
                 disabled={panning}
                 onPress={handleTouchableOpacityPress}
                 >
-                  
+                  <Text>{index}</Text>
                 </TouchableOpacity>
               )
             })
           }
         </View>
-      </PanZoom>
+      </PanZoomReanimated>
       <TouchableOpacity style={styles.floatingBtn} onPress={handlePanning}>
         <MaterialIcons style={styles.palmIcon} name="pan-tool" size={24} color="white" />
       </TouchableOpacity>
