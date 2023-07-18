@@ -37,13 +37,21 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
     const rStyle = useAnimatedStyle(() => {
       return {
         transform: [
+          { translateX: focalX.value/lastScale.value },
+          { translateY: focalY.value/lastScale.value },
+          { translateX: -contentDimensions.width/2 },
+          { translateY: -contentDimensions.height/2 },
           { scale: baseScale.value*pinchScale.value },
+          { translateX: -focalX.value/lastScale.value },
+          { translateY: -focalY.value/lastScale.value },
+          { translateX: contentDimensions.width/2 },
+          { translateY: contentDimensions.height/2 },
           { translateX: translateX.value },
-          { translateY: translateY.value  },
+          { translateY: translateY.value },
         ]}
     })
 
-    const debug = useAnimatedStyle(()=>{
+    const debug1 = useAnimatedStyle(()=>{
       return {
         transform: [
           { translateX: focalX.value },
@@ -105,11 +113,12 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
         animatedViewRef.current?.measureInWindow((x: number,y: number,width: number, height: number)=>{
             const scaledHeight = contentDimensions.height*lastScale.value;
             const scaledWidth = contentDimensions.width*lastScale.value;
+            finalTranslates.x = Math.max(translateX.value, translateX.value-((x+scaledWidth)/lastScale.value)+ADDITIONAL_OFFSET/lastScale.value);
             if(x+scaledWidth<containerCorners.topLeft.x) {
                 finalTranslates.x = translateX.value-((x+scaledWidth)/lastScale.value)+ADDITIONAL_OFFSET/lastScale.value;
             }
             if(y+scaledHeight<containerCorners.topLeft.y) {
-                finalTranslates.y =  translateY.value-((y+scaledHeight)/lastScale.value)+ADDITIONAL_OFFSET/lastScale.value;
+                finalTranslates.y = translateY.value-((y+scaledHeight)/lastScale.value)+ADDITIONAL_OFFSET/lastScale.value;
             }
             if(x>containerCorners.topRight.x) {
                 finalTranslates.x = translateX.value-(x-containerCorners.topRight.x)/lastScale.value-ADDITIONAL_OFFSET/lastScale.value;
@@ -118,12 +127,12 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
                 finalTranslates.y = translateY.value-(y-containerCorners.bottomRight.y)/lastScale.value-(ADDITIONAL_OFFSET+statusBarHeight)/lastScale.value;
             }
             if(finalTranslates.x) {
-                translateX.value =(finalTranslates.x);
-                lastOffsetX.value = (translateX.value);
+                translateX.value = finalTranslates.x;
+                lastOffsetX.value = translateX.value;
             }
             if(finalTranslates.y) {
-                translateY.value = (finalTranslates.y);
-                lastOffsetY.value = (translateY.value);
+                translateY.value = finalTranslates.y;
+                lastOffsetY.value = translateY.value;
             }
         })
     }
@@ -187,24 +196,22 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
             onDoubleTap(absoluteX, absoluteY)
         })
         const panGesture = Gesture.Pan().enabled(isPanGestureEnabled).onUpdate(({ translationX, translationY, velocityX, velocityY }) => {
+          console.log(translateX.value)
             translateX.value = (lastOffsetX.value + translationX / lastScale.value);
             translateY.value = (lastOffsetY.value + translationY / lastScale.value);
         }).onEnd(({ translationX, translationY }) => {
             runOnJS(handleBoundaries)(translationX, translationY);
         }).minDistance(0).minPointers(1).maxPointers(2)
         const pinchGesture = Gesture.Pinch().onUpdate((e) => {
-            const {focalX:previousFocalX, focalY:previousFocalY, velocity, scale} = e;
+            const {focalX:x, focalY:y, velocity, scale} = e;
             if(!velocity) {
                 return;
             }
+            focalX.value = x;
+            focalY.value = y
             pinchScale.value = (scale)
-            const translateXValue = previousFocalX - focalX.value * lastScale.value;
-            const translateYValue = previousFocalY - focalY.value * lastScale.value;
-            translateX.value = (translateXValue);
-            translateY.value = (translateYValue);
-        }).onEnd(({ scale, focalX, focalY }) => {
-            pinchScale.value = (scale)
-            onPinchEnd(scale, focalX, focalY);
+        }).onEnd(({ scale, focalX:x, focalY:y }) => {
+            onPinchEnd(scale, x, y);
         })
         return Gesture.Simultaneous(pinchGesture, panGesture )
     }, [ handleBoundaries ,lastOffsetX, lastOffsetY, onDoubleTap, onPinchEnd, isPanGestureEnabled, pinchScale, translateX, translateY, lastScale, focalX, focalY ])
@@ -238,8 +245,7 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
                     >
                         {children}
                     </Animated.View>
-                    <Animated.View style={[styles.debug, debug]}>
-
+                    <Animated.View style={[styles.debug, debug1]}>
                     </Animated.View>
                 </View>
             </GestureDetector>
