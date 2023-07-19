@@ -1,9 +1,11 @@
-import {  StyleSheet, Text, View, Image, ViewStyle, Dimensions, StatusBar } from 'react-native'
-import React, { FunctionComponent, ReactElement, Ref, forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Gesture, GestureDetector, GestureHandlerRootView, PanGestureHandler, PinchGestureHandler, State } from 'react-native-gesture-handler';
+import {  StyleSheet, View, ViewStyle, Dimensions, StatusBar } from 'react-native'
+import React, { ReactElement, Ref, forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
 type IProps = {
+    maxScale?: number,
+    minScale?: number,
     style?: ViewStyle, 
     contentContainerStyle?: ViewStyle, 
     children: ReactElement
@@ -14,7 +16,8 @@ interface PanZoomRef {
 }
 
 const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
-    const MAX_SCALE = 1.3;
+    const MAX_SCALE = props.maxScale ?? 1.5;
+    const MIN_SCALE = props.minScale ?? 0.5;
     const {style, contentContainerStyle, children} = props;
     const animatedViewRef = useRef<any>(null);
     const rootViewRef = useRef<any>(null);
@@ -29,26 +32,29 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
     const [contentDimensions, setContentDimensions] = useState({ width: 1, height: 1 })
     const focalX = useSharedValue(0);
     const focalY = useSharedValue(0);
+    const prevFocalX = useRef(0);
+    const prevFocalY = useRef(0);
     const lastOffsetX = useSharedValue(0)
     const lastOffsetY = useSharedValue(0)
     const [statusBarHeight, setStatusBarHeight] = useState(0);
     const [childrenCount, setChildrenCount] = useState(0);
 
     const rStyle = useAnimatedStyle(() => {
-      return {
-        transform: [
-          { translateX: focalX.value/lastScale.value },
-          { translateY: focalY.value/lastScale.value },
-          { translateX: -contentDimensions.width/2 },
-          { translateY: -contentDimensions.height/2 },
-          { scale: baseScale.value*pinchScale.value },
-          { translateX: -focalX.value/lastScale.value },
-          { translateY: -focalY.value/lastScale.value },
-          { translateX: contentDimensions.width/2 },
-          { translateY: contentDimensions.height/2 },
-          { translateX: translateX.value },
-          { translateY: translateY.value },
-        ]}
+        console.log(prevFocalX.current-focalX.value)
+        return {
+            transform: [
+                { translateX: focalX.value/lastScale.value },
+                { translateY: (focalY.value)/lastScale.value },
+                { translateX: -contentDimensions.width/2 },
+                { translateY: -contentDimensions.height/2 },
+                { scale: baseScale.value*pinchScale.value },
+                { translateX: -focalX.value/lastScale.value },
+                { translateY: -(focalY.value)/lastScale.value },
+                { translateX: contentDimensions.width/2 },
+                { translateY: contentDimensions.height/2 },
+                { translateX: translateX.value },
+                { translateY: translateY.value },
+            ]}
     })
 
     const debug1 = useAnimatedStyle(()=>{
@@ -160,9 +166,9 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
 
     const onDoubleTap = useCallback((absoluteX:number, absoluteY:number) => {
         if (!isZoomedIn) {
-            zoomIn(absoluteX, absoluteY)
+            runOnJS(zoomIn)(absoluteX, absoluteY)
         } else {
-            zoomOut()
+            runOnJS(zoomOut)()
         }
     }, [zoomIn, zoomOut, isZoomedIn])
 
@@ -182,11 +188,16 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
 
     const onPinchEnd = useCallback((scale: number, x: number, y: number) => {
         'worklet';
-        const newScale = baseScale.value * scale
-        lastScale.value = (newScale)
+        let newScale = baseScale.value * scale;
+        if(baseScale.value * scale > MAX_SCALE) {
+            newScale = MAX_SCALE;
+        } else if (baseScale.value * scale < MIN_SCALE) {
+            newScale = MIN_SCALE
+        }
+        lastScale.value = newScale
         runOnJS(setIsZoomedIn)(true)
-        baseScale.value = (newScale)
-        pinchScale.value = (1)
+        baseScale.value = newScale
+        pinchScale.value = 1
         runOnJS(setIsPanGestureEnabled)(true);
     }, [handleBoundaries, lastScale, baseScale, pinchScale, zoomOut, isZoomedIn, focalX, focalY, isPanGestureEnabled])
 
@@ -195,13 +206,16 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
             onDoubleTap(absoluteX, absoluteY)
         })
         const panGesture = Gesture.Pan().enabled(isPanGestureEnabled).onUpdate(({ translationX, translationY, velocityX, velocityY }) => {
-          console.log(translateX.value)
             translateX.value = (lastOffsetX.value + translationX / lastScale.value);
             translateY.value = (lastOffsetY.value + translationY / lastScale.value);
         }).onEnd(({ translationX, translationY }) => {
             runOnJS(handleBoundaries)(translationX, translationY);
         }).minDistance(0).minPointers(1).maxPointers(2)
-        const pinchGesture = Gesture.Pinch().onUpdate((e) => {
+        const pinchGesture = Gesture.Pinch().onStart(e=>{
+            const {focalX, focalY, scale} = e;
+            prevFocalX.current = focalX;
+            prevFocalY.current = focalY
+        }).onUpdate((e) => {
             const {focalX:x, focalY:y, velocity, scale} = e;
             if(!velocity) {
                 return;
@@ -209,6 +223,11 @@ const PanZoomComponent = (props: IProps, ref: Ref<PanZoomRef>) => {
             focalX.value = x;
             focalY.value = y
             pinchScale.value = (scale)
+            if(baseScale.value*pinchScale.value>MAX_SCALE) {
+                pinchScale.value = MAX_SCALE/baseScale.value
+            } else if (baseScale.value*pinchScale.value<MIN_SCALE) {
+                pinchScale.value = MIN_SCALE/baseScale.value
+            }
         }).onEnd(({ scale, focalX:x, focalY:y }) => {
             onPinchEnd(scale, x, y);
         })
